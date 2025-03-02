@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地球渲染测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #earth-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+            color: white;
+        }
+        .loader {
+            border: 5px solid #333;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #error-message {
+            color: #ff5252;
+            text-align: center;
+            margin-top: 20px;
+            max-width: 80%;
+            display: none;
+        }
+        #debug-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <div>加载中...</div>
+        <div id="error-message"></div>
+    </div>
+    <div id="earth-container"></div>
+    <div id="debug-info">调试信息: 初始化中...</div>
+
+    <!-- Three.js 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // 调试信息显示
+        function updateDebugInfo(message) {
+            const debugElement = document.getElementById('debug-info');
+            debugElement.textContent = '调试信息: ' + message;
+            console.log(message);
+        }
+        
+        // 显示错误信息
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            updateDebugInfo('错误: ' + message);
+        }
+        
+        // 隐藏加载屏幕
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.style.opacity = 0;
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }
+        
+        // 检查Three.js是否正确加载
+        if (typeof THREE === 'undefined') {
+            showError('无法加载Three.js库！请检查网络连接。');
+        } else {
+            updateDebugInfo('Three.js已加载，版本: ' + THREE.REVISION);
+            
+            // 创建程序化地球纹理
+            function createProceduralEarthTexture() {
+                updateDebugInfo('创建程序化地球纹理');
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                // 绘制海洋
+                ctx.fillStyle = '#1a237e';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制简化的大陆
+                ctx.fillStyle = '#4caf50';
+                
+                // 南极洲
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height * 0.85, canvas.width * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 非洲
+                ctx.beginPath();
+                ctx.moveTo(canvas.width * 0.5, canvas.height * 0.2);
+                ctx.lineTo(canvas.width * 0.6, canvas.height * 0.5);
+                ctx.lineTo(canvas.width * 0.5, canvas.height * 0.6);
+                ctx.lineTo(canvas.width * 0.4, canvas.height * 0.5);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 欧亚大陆
+                ctx.beginPath();
+                ctx.ellipse(canvas.width * 0.6, canvas.height * 0.3, canvas.width * 0.25, canvas.height * 0.15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 美洲
+                ctx.beginPath();
+                ctx.ellipse(canvas.width * 0.25, canvas.height * 0.4, canvas.width * 0.1, canvas.height * 0.25, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 澳大利亚
+                ctx.beginPath();
+                ctx.ellipse(canvas.width * 0.8, canvas.height * 0.6, canvas.width * 0.08, canvas.height * 0.08, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 添加一些随机岛屿
+                ctx.fillStyle = '#81c784';
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = 2 + Math.random() * 8;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // 添加经纬线
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 1;
+                
+                // 经线
+                for (let i = 0; i < canvas.width; i += canvas.width / 24) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, canvas.height);
+                    ctx.stroke();
+                }
+                
+                // 纬线
+                for (let i = 0; i < canvas.height; i += canvas.height / 12) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(canvas.width, i);
+                    ctx.stroke();
+                }
+                
+                return new THREE.CanvasTexture(canvas);
+            }
+            
+            // 创建程序化云层纹理
+            function createProceduralCloudsTexture() {
+                updateDebugInfo('创建程序化云层纹理');
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                // 透明背景
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制云层
+                for (let i = 0; i < 100; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = 5 + Math.random() * 20;
+                    const opacity = 0.1 + Math.random() * 0.5;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                    ctx.fill();
+                }
+                
+                // 添加一些大型云系
+                for (let i = 0; i < 5; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = 30 + Math.random() * 50;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.fill();
+                    
+                    // 添加云团细节
+                    for (let j = 0; j < 10; j++) {
+                        const subX = x + (Math.random() * size * 0.8) - (size * 0.4);
+                        const subY = y + (Math.random() * size * 0.8) - (size * 0.4);
+                        const subSize = 5 + Math.random() * 15;
+                        
+                        ctx.beginPath();
+                        ctx.arc(subX, subY, subSize, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.fill();
+                    }
+                }
+                
+                return new THREE.CanvasTexture(canvas);
+            }
+            
+            // 创建渐变背景
+            function createGradientBackground() {
+                updateDebugInfo('创建渐变背景');
+                const canvas = document.createElement('canvas');
+                canvas.width = 2;
+                canvas.height = 2;
+                
+                const context = canvas.getContext('2d');
+                
+                // 创建径向渐变
+                const gradient = context.createRadialGradient(
+                    canvas.width / 2, 
+                    canvas.height / 2, 
+                    0, 
+                    canvas.width / 2, 
+                    canvas.height / 2, 
+                    canvas.width / 2
+                );
+                
+                // 添加渐变颜色
+                gradient.addColorStop(0, '#0a1329');
+                gradient.addColorStop(1, '#000000');
+                
+                // 填充渐变
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                
+                return texture;
+            }
+            
+            // 简化版地球渲染
+            class SimpleEarth {
+                constructor(container) {
+                    updateDebugInfo('初始化SimpleEarth');
+                    this.container = container;
+                    this.scene = new THREE.Scene();
+                    
+                    // 添加背景渐变
+                    this.scene.background = createGradientBackground();
+                    
+                    this.camera = new THREE.PerspectiveCamera(
+                        45, 
+                        container.clientWidth / container.clientHeight, 
+                        0.1, 
+                        1000
+                    );
+                    this.camera.position.set(0, 0, 5);
+                    
+                    // 渲染器
+                    this.renderer = new THREE.WebGLRenderer({ 
+                        antialias: true, 
+                        alpha: true
+                    });
+                    this.renderer.setSize(container.clientWidth, container.clientHeight);
+                    this.renderer.setPixelRatio(window.devicePixelRatio);
+                    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                    this.renderer.toneMappingExposure = 1.2;
+                    container.appendChild(this.renderer.domElement);
+                    
+                    // 控制器
+                    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                    this.controls.enableDamping = true;
+                    this.controls.dampingFactor = 0.05;
+                    this.controls.rotateSpeed = 0.5;
+                    this.controls.minDistance = 3;
+                    this.controls.maxDistance = 10;
+                    this.controls.autoRotate = true;
+                    this.controls.autoRotateSpeed = 0.5;
+                    
+                    // 光照
+                    this.setupLights();
+                    
+                    // 直接使用程序化纹理创建地球
+                    this.createEarthWithProceduralTexture();
+                    
+                    // 创建大气层
+                    this.createAtmosphere();
+                    
+                    // 创建云层
+                    this.createCloudsWithProceduralTexture();
+                    
+                    // 动画循环
+                    this.animate();
+                    
+                    // 隐藏加载屏幕
+                    hideLoadingScreen();
+                    updateDebugInfo('地球初始化完成');
+                }
+                
+                setupLights() {
+                    updateDebugInfo('设置光照');
+                    // 环境光
+                    const ambientLight = new THREE.AmbientLight(0x404040, 1.0);
+                    this.scene.add(ambientLight);
+                    
+                    // 方向光
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                    directionalLight.position.set(5, 3, 5);
+                    this.scene.add(directionalLight);
+                    
+                    // 半球光
+                    const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
+                    this.scene.add(hemisphereLight);
+                }
+                
+                createEarthWithProceduralTexture() {
+                    updateDebugInfo('使用程序化纹理创建地球');
+                    // 创建程序化地球纹理
+                    const earthTexture = createProceduralEarthTexture();
+                    
+                    const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
+                    const earthMaterial = new THREE.MeshPhongMaterial({
+                        map: earthTexture,
+                        specular: new THREE.Color(0x333333),
+                        shininess: 15
+                    });
+                    
+                    this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
+                    this.scene.add(this.earth);
+                }
+                
+                createAtmosphere() {
+                    updateDebugInfo('创建大气层');
+                    // 创建大气层效果
+                    const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
+                    const atmosphereMaterial = new THREE.MeshPhongMaterial({
+                        color: 0x0077ff,
+                        transparent: true,
+                        opacity: 0.15,
+                        side: THREE.BackSide,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    this.atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+                    this.scene.add(this.atmosphere);
+                    
+                    // 创建大气层光晕
+                    const glowGeometry = new THREE.SphereGeometry(2.15, 64, 64);
+                    const glowMaterial = new THREE.ShaderMaterial({
+                        uniforms: {
+                            'c': { value: 0.2 },
+                            'p': { value: 4.0 },
+                            'glowColor': { value: new THREE.Color(0x0077ff) },
+                            'viewVector': { value: new THREE.Vector3(0, 0, 1) }
+                        },
+                        vertexShader: `
+                            uniform vec3 viewVector;
+                            uniform float c;
+                            uniform float p;
+                            varying float intensity;
+                            void main() {
+                                vec3 vNormal = normalize(normal);
+                                vec3 vNormel = normalize(viewVector);
+                                intensity = pow(c - dot(vNormal, vNormel), p);
+                                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                            }
+                        `,
+                        fragmentShader: `
+                            uniform vec3 glowColor;
+                            varying float intensity;
+                            void main() {
+                                vec3 glow = glowColor * intensity;
+                                gl_FragColor = vec4(glow, 1.0);
+                            }
+                        `,
+                        side: THREE.BackSide,
+                        blending: THREE.AdditiveBlending,
+                        transparent: true
+                    });
+                    
+                    this.glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                    this.scene.add(this.glow);
+                }
+                
+                createCloudsWithProceduralTexture() {
+                    updateDebugInfo('使用程序化纹理创建云层');
+                    // 创建程序化云层纹理
+                    const cloudsTexture = createProceduralCloudsTexture();
+                    
+                    const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
+                    const cloudsMaterial = new THREE.MeshPhongMaterial({
+                        map: cloudsTexture,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+                    
+                    this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+                    this.scene.add(this.clouds);
+                }
+                
+                animate() {
+                    requestAnimationFrame(this.animate.bind(this));
+                    
+                    // 旋转地球和云层
+                    if (this.earth) this.earth.rotation.y += 0.0005;
+                    if (this.clouds) this.clouds.rotation.y += 0.0007;
+                    if (this.atmosphere) this.atmosphere.rotation.y += 0.0005;
+                    
+                    // 更新大气层光晕视角
+                    if (this.glow && this.glow.material.uniforms) {
+                        this.glow.material.uniforms.viewVector.value = new THREE.Vector3().subVectors(
+                            this.camera.position,
+                            this.glow.position
+                        );
+                    }
+                    
+                    // 更新控制器
+                    this.controls.update();
+                    
+                    // 渲染场景
+                    this.renderer.render(this.scene, this.camera);
+                }
+            }
+            
+            // 初始化地球
+            document.addEventListener('DOMContentLoaded', () => {
+                try {
+                    updateDebugInfo('DOM加载完成，初始化地球');
+                    const earthContainer = document.getElementById('earth-container');
+                    const earth = new SimpleEarth(earthContainer);
+                    
+                    // 窗口大小调整
+                    window.addEventListener('resize', () => {
+                        earth.camera.aspect = earthContainer.clientWidth / earthContainer.clientHeight;
+                        earth.camera.updateProjectionMatrix();
+                        earth.renderer.setSize(earthContainer.clientWidth, earthContainer.clientHeight);
+                    });
+                    
+                    // 设置超时，防止加载无限等待
+                    setTimeout(() => {
+                        hideLoadingScreen();
+                    }, 5000);
+                } catch (error) {
+                    showError('初始化地球时出错: ' + error.message);
+                    console.error('初始化地球时出错:', error);
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

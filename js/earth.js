@@ -2,6 +2,10 @@ class Earth {
     constructor(container) {
         this.container = container;
         this.scene = new THREE.Scene();
+        
+        // 添加背景渐变
+        this.scene.background = this.createGradientBackground();
+        
         this.camera = new THREE.PerspectiveCamera(
             45, 
             container.clientWidth / container.clientHeight, 
@@ -18,7 +22,8 @@ class Earth {
         });
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setClearColor(0x000000, 0);
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.2;
         container.appendChild(this.renderer.domElement);
         
         // 初始化控制器
@@ -28,6 +33,8 @@ class Earth {
         this.controls.rotateSpeed = 0.5;
         this.controls.minDistance = 3;
         this.controls.maxDistance = 10;
+        this.controls.autoRotate = true;
+        this.controls.autoRotateSpeed = 0.5;
         
         // 初始化光照
         this.setupLights();
@@ -45,6 +52,9 @@ class Earth {
         
         // 创建地球
         this.createEarth();
+        
+        // 创建大气层
+        this.createAtmosphere();
         
         // 创建云层
         this.createClouds();
@@ -72,19 +82,279 @@ class Earth {
         this.animate();
     }
     
+    createGradientBackground() {
+        // 创建渐变背景纹理
+        const canvas = document.createElement('canvas');
+        canvas.width = 2;
+        canvas.height = 2;
+        
+        const context = canvas.getContext('2d');
+        
+        // 创建径向渐变
+        const gradient = context.createRadialGradient(
+            canvas.width / 2, 
+            canvas.height / 2, 
+            0, 
+            canvas.width / 2, 
+            canvas.height / 2, 
+            canvas.width / 2
+        );
+        
+        // 添加渐变颜色
+        gradient.addColorStop(0, '#0a1329');
+        gradient.addColorStop(1, '#000000');
+        
+        // 填充渐变
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        
+        return texture;
+    }
+    
     setupLights() {
         // 环境光 - 增强亮度
-        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.0);
         this.scene.add(ambientLight);
         
-        // 方向光 - 调整位置和强度
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        // 方向光 - 调整位置和强度，模拟太阳光
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
         directionalLight.position.set(5, 3, 5);
         this.scene.add(directionalLight);
         
         // 添加半球光以更好地照亮地球
         const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
         this.scene.add(hemisphereLight);
+    }
+    
+    createEarth() {
+        // 加载纹理
+        const textureLoader = new THREE.TextureLoader(this.loadingManager);
+        
+        try {
+            // 尝试加载高质量纹理
+            const earthDayMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_4k.jpg', undefined, undefined, () => {
+                console.error('无法加载高质量地球纹理，尝试备用纹理');
+                this.loadBackupEarthTexture();
+            });
+            
+            const earthNormalMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_4k.jpg');
+            const earthSpecularMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_4k.jpg');
+            
+            // 改进纹理设置
+            earthDayMap.anisotropy = 16;
+            
+            const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
+            const earthMaterial = new THREE.MeshPhongMaterial({
+                map: earthDayMap,
+                normalMap: earthNormalMap,
+                normalScale: new THREE.Vector2(0.05, 0.05),
+                specularMap: earthSpecularMap,
+                specular: new THREE.Color(0x333333),
+                shininess: 25,
+                reflectivity: 0.2
+            });
+            
+            this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            this.scene.add(this.earth);
+            
+            // 添加南极点标记
+            const southPoleGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+            const southPoleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const southPole = new THREE.Mesh(southPoleGeometry, southPoleMaterial);
+            southPole.position.set(0, -2, 0);
+            this.scene.add(southPole);
+        } catch (error) {
+            console.error('加载地球纹理时出错:', error);
+            this.loadBackupEarthTexture();
+        }
+    }
+    
+    loadBackupEarthTexture() {
+        try {
+            const textureLoader = new THREE.TextureLoader(this.loadingManager);
+            
+            // 尝试加载NASA蓝色大理石纹理
+            const earthDayMap = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57752/land_shallow_topo_2048.jpg', undefined, undefined, () => {
+                console.error('无法加载NASA蓝色大理石纹理，尝试本地纹理');
+                
+                // 尝试加载本地纹理
+                const localEarthDayMap = textureLoader.load('assets/textures/earth_daymap.jpg', undefined, undefined, () => {
+                    console.error('无法加载本地地球纹理，使用程序化纹理');
+                    this.useBackupTextures();
+                });
+                
+                const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
+                const earthMaterial = new THREE.MeshPhongMaterial({
+                    map: localEarthDayMap,
+                    specular: new THREE.Color(0x333333),
+                    shininess: 15
+                });
+                
+                this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
+                this.scene.add(this.earth);
+                
+                // 添加南极点标记
+                const southPoleGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+                const southPoleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const southPole = new THREE.Mesh(southPoleGeometry, southPoleMaterial);
+                southPole.position.set(0, -2, 0);
+                this.scene.add(southPole);
+            });
+            
+            const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
+            const earthMaterial = new THREE.MeshPhongMaterial({
+                map: earthDayMap,
+                specular: new THREE.Color(0x333333),
+                shininess: 15
+            });
+            
+            this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            this.scene.add(this.earth);
+            
+            // 添加南极点标记
+            const southPoleGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+            const southPoleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const southPole = new THREE.Mesh(southPoleGeometry, southPoleMaterial);
+            southPole.position.set(0, -2, 0);
+            this.scene.add(southPole);
+        } catch (error) {
+            console.error('加载备用地球纹理时出错:', error);
+            this.useBackupTextures();
+        }
+    }
+    
+    createAtmosphere() {
+        // 创建大气层效果
+        const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
+        const atmosphereMaterial = new THREE.MeshPhongMaterial({
+            color: 0x0077ff,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending
+        });
+        
+        this.atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        this.scene.add(this.atmosphere);
+        
+        // 创建大气层光晕
+        const glowGeometry = new THREE.SphereGeometry(2.15, 64, 64);
+        const glowMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                'c': { value: 0.2 },
+                'p': { value: 4.0 },
+                'glowColor': { value: new THREE.Color(0x0077ff) },
+                'viewVector': { value: new THREE.Vector3(0, 0, 1) }
+            },
+            vertexShader: `
+                uniform vec3 viewVector;
+                uniform float c;
+                uniform float p;
+                varying float intensity;
+                void main() {
+                    vec3 vNormal = normalize(normal);
+                    vec3 vNormel = normalize(viewVector);
+                    intensity = pow(c - dot(vNormal, vNormel), p);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 glowColor;
+                varying float intensity;
+                void main() {
+                    vec3 glow = glowColor * intensity;
+                    gl_FragColor = vec4(glow, 1.0);
+                }
+            `,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            transparent: true
+        });
+        
+        this.glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        this.scene.add(this.glow);
+    }
+    
+    createClouds() {
+        try {
+            const textureLoader = new THREE.TextureLoader(this.loadingManager);
+            
+            const cloudsTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_clouds_4k.png', undefined, undefined, () => {
+                console.error('无法加载高质量云层纹理，尝试NASA云层纹理');
+                
+                // 尝试加载NASA云层纹理
+                const nasaCloudsTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57747/cloud_combined_2048.jpg', undefined, undefined, () => {
+                    console.error('无法加载NASA云层纹理，尝试备用纹理');
+                    
+                    // 尝试加载备用云层纹理
+                    const backupCloudsTexture = textureLoader.load('assets/textures/clouds.png', undefined, undefined, () => {
+                        console.error('无法加载备用云层纹理，使用程序化纹理');
+                        
+                        if (this.clouds) {
+                            this.scene.remove(this.clouds);
+                        }
+                        
+                        const cloudsTexture = this.createProceduralCloudsTexture();
+                        const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
+                        const cloudsMaterial = new THREE.MeshPhongMaterial({
+                            map: cloudsTexture,
+                            transparent: true,
+                            opacity: 0.4
+                        });
+                        
+                        this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+                        this.scene.add(this.clouds);
+                    });
+                    
+                    const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
+                    const cloudsMaterial = new THREE.MeshPhongMaterial({
+                        map: backupCloudsTexture,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+                    
+                    this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+                    this.scene.add(this.clouds);
+                });
+                
+                const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
+                const cloudsMaterial = new THREE.MeshPhongMaterial({
+                    map: nasaCloudsTexture,
+                    transparent: true,
+                    opacity: 0.4
+                });
+                
+                this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+                this.scene.add(this.clouds);
+            });
+            
+            const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
+            const cloudsMaterial = new THREE.MeshPhongMaterial({
+                map: cloudsTexture,
+                transparent: true,
+                opacity: 0.4
+            });
+            
+            this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+            this.scene.add(this.clouds);
+        } catch (error) {
+            console.error('加载云层纹理时出错:', error);
+            
+            // 创建简单的云层
+            const cloudsTexture = this.createProceduralCloudsTexture();
+            const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
+            const cloudsMaterial = new THREE.MeshPhongMaterial({
+                map: cloudsTexture,
+                transparent: true,
+                opacity: 0.4
+            });
+            
+            this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+            this.scene.add(this.clouds);
+        }
     }
     
     createProceduralEarthTexture() {
@@ -261,98 +531,6 @@ class Earth {
         
         this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
         this.scene.add(this.clouds);
-    }
-    
-    createEarth() {
-        // 加载纹理
-        const textureLoader = new THREE.TextureLoader(this.loadingManager);
-        
-        try {
-            // 尝试加载纹理
-            const earthDayMap = textureLoader.load('assets/textures/earth_daymap.jpg', undefined, undefined, () => {
-                console.error('无法加载地球日间纹理，使用备用纹理');
-                this.useBackupTextures();
-            });
-            
-            const earthNormalMap = textureLoader.load('assets/textures/earth_normal_map.jpg');
-            const earthSpecularMap = textureLoader.load('assets/textures/earth_specular_map.jpg');
-            
-            // 改进纹理设置
-            earthDayMap.anisotropy = 16;
-            
-            const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
-            const earthMaterial = new THREE.MeshPhongMaterial({
-                map: earthDayMap,
-                bumpMap: earthNormalMap,
-                bumpScale: 0.05,
-                specularMap: earthSpecularMap,
-                specular: new THREE.Color(0x333333),
-                shininess: 15
-            });
-            
-            this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
-            this.scene.add(this.earth);
-            
-            // 添加南极点标记
-            const southPoleGeometry = new THREE.SphereGeometry(0.03, 16, 16);
-            const southPoleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const southPole = new THREE.Mesh(southPoleGeometry, southPoleMaterial);
-            southPole.position.set(0, -2, 0);
-            this.scene.add(southPole);
-        } catch (error) {
-            console.error('加载地球纹理时出错:', error);
-            this.useBackupTextures();
-        }
-    }
-    
-    createClouds() {
-        try {
-            const textureLoader = new THREE.TextureLoader(this.loadingManager);
-            
-            const cloudsTexture = textureLoader.load('assets/textures/clouds.png', undefined, undefined, () => {
-                console.error('无法加载云层纹理');
-                
-                // 创建简单的云层
-                if (this.clouds) {
-                    this.scene.remove(this.clouds);
-                }
-                
-                const cloudsTexture = this.createProceduralCloudsTexture();
-                const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
-                const cloudsMaterial = new THREE.MeshPhongMaterial({
-                    map: cloudsTexture,
-                    transparent: true,
-                    opacity: 0.4
-                });
-                
-                this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
-                this.scene.add(this.clouds);
-            });
-            
-            const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
-            const cloudsMaterial = new THREE.MeshPhongMaterial({
-                map: cloudsTexture,
-                transparent: true,
-                opacity: 0.4
-            });
-            
-            this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
-            this.scene.add(this.clouds);
-        } catch (error) {
-            console.error('加载云层纹理时出错:', error);
-            
-            // 创建简单的云层
-            const cloudsTexture = this.createProceduralCloudsTexture();
-            const cloudsGeometry = new THREE.SphereGeometry(2.05, 64, 64);
-            const cloudsMaterial = new THREE.MeshPhongMaterial({
-                map: cloudsTexture,
-                transparent: true,
-                opacity: 0.4
-            });
-            
-            this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
-            this.scene.add(this.clouds);
-        }
     }
     
     createStationMarkers() {
@@ -688,6 +866,17 @@ class Earth {
         this.earth.rotation.y += 0.0005;
         if (this.clouds) {
             this.clouds.rotation.y += 0.0007;
+        }
+        if (this.atmosphere) {
+            this.atmosphere.rotation.y += 0.0005;
+        }
+        
+        // 更新大气层光晕视角
+        if (this.glow && this.glow.material.uniforms) {
+            this.glow.material.uniforms.viewVector.value = new THREE.Vector3().subVectors(
+                this.camera.position,
+                this.glow.position
+            );
         }
         
         // 更新气压场动画
