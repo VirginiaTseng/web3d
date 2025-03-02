@@ -1,0 +1,322 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background-color: #0a192f;
+    color: #e6f1ff;
+    overflow: hidden;
+}
+
+.app-container {
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    height: 100vh;
+    padding: 20px;
+    gap: 20px;
+}
+
+/* 头部样式 */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1e3a8a;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo img {
+    height: 40px;
+    margin-right: 15px;
+}
+
+.logo h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #64ffda;
+}
+
+.date-time {
+    text-align: right;
+    font-size: 14px;
+}
+
+#current-date {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+/* 主要内容样式 */
+.main-content {
+    display: grid;
+    grid-template-columns: 250px 1fr 300px;
+    gap: 20px;
+    height: 100%;
+}
+
+/* 控制面板样式 */
+.control-panel {
+    background-color: rgba(16, 33, 65, 0.7);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    background-color: #1e3a8a;
+    color: #e6f1ff;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #2d4ba0;
+}
+
+.data-layers h3 {
+    margin-bottom: 15px;
+    color: #64ffda;
+    font-size: 16px;
+}
+
+.layer-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.layer-item input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+/* 地球容器样式 */
+.earth-container {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(16, 33, 65, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* 数据面板样式 */
+.data-panel {
+    background-color: rgba(16, 33, 65, 0.7);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-header h2 {
+    font-size: 18px;
+    color: #64ffda;
+}
+
+.refresh-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.station-header {
+    margin-bottom: 15px;
+}
+
+.station-header h3 {
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.coordinates {
+    font-size: 12px;
+    color: #a8b2d1;
+}
+
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.data-item {
+    background-color: rgba(30, 58, 138, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.data-icon {
+    margin-bottom: 8px;
+}
+
+.data-icon img {
+    width: 24px;
+    height: 24px;
+}
+
+.data-label {
+    font-size: 12px;
+    color: #a8b2d1;
+    margin-bottom: 5px;
+}
+
+.data-value {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* 时间控制器样式 */
+.time-controller {
+    background-color: rgba(16, 33, 65, 0.7);
+    border-radius: 10px;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.time-info {
+    font-size: 14px;
+}
+
+.time-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.play-btn, .pause-btn {
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.time-slider {
+    width: 300px;
+    height: 5px;
+    -webkit-appearance: none;
+    background: #1e3a8a;
+    border-radius: 5px;
+    outline: none;
+}
+
+.time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #64ffda;
+    cursor: pointer;
+}
+
+/* 气压图例样式 */
+.pressure-legend {
+    background-color: rgba(16, 33, 65, 0.7);
+    border-radius: 10px;
+    padding: 15px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.legend-title {
+    font-size: 14px;
+    color: #64ffda;
+}
+
+.legend-gradient {
+    height: 10px;
+    background: linear-gradient(to right, #3498db, #2ecc71, #f1c40f, #e74c3c);
+    border-radius: 5px;
+}
+
+.legend-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .main-content {
+        grid-template-columns: 200px 1fr 250px;
+    }
+    
+    .data-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+    }
+    
+    .control-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .data-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .app-container {
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .control-panel {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .time-controller {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .time-slider {
+        width: 100%;
+    }
+} 
