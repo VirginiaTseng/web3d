@@ -16,7 +16,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 # 更新纹理URL - 使用更可靠的来源
 textures = {
     # 基本地球纹理 - 使用NASA Blue Marble图像
-    'earth_daymap.jpg': 'https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_cloud_2048.jpg',
+    #'earth_daymap.jpg': 'https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_cloud_2048.jpg',
     
     # 备用地球纹理
     'earth_daymap_alt.jpg': 'https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg',

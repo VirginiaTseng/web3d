@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极地气象预报系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Three.js 库 - 更新到更稳定的版本 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 25, 47, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+        
+        #loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loader {
+            border: 5px solid #1e3a8a;
+            border-top: 5px solid #64ffda;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #error-message {
+            color: #ff5252;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载屏幕 -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <div>正在加载地球数据...</div>
+        <div id="error-message">加载出错，正在使用备用数据...</div>
+    </div>
+
+    <div class="app-container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="logo">
+                <img src="assets/icons/logo.svg" alt="极地气象预报系统">
+                <h1>极地气象预报系统</h1>
+            </div>
+            <div class="date-time">
+                <div id="current-date">2023年12月15日</div>
+                <div id="current-time">星期五 12:30:45</div>
+            </div>
+        </header>
+
+        <!-- 主要内容 -->
+        <main class="main-content">
+            <!-- 控制面板 -->
+            <div class="control-panel">
+                <div class="control-buttons">
+                    <button id="overview-btn" class="btn">概览</button>
+                    <button id="reset-btn" class="btn">重置</button>
+                </div>
+                
+                <div class="data-layers">
+                    <h3>数据图层</h3>
+                    <div class="layer-item">
+                        <input type="checkbox" id="temperature-layer" checked>
+                        <label for="temperature-layer">温度场</label>
+                    </div>
+                    <div class="layer-item">
+                        <input type="checkbox" id="wind-layer" checked>
+                        <label for="wind-layer">风场</label>
+                    </div>
+                    <div class="layer-item">
+                        <input type="checkbox" id="pressure-layer" checked>
+                        <label for="pressure-layer">气压场</label>
+                    </div>
+                    <div class="layer-item">
+                        <input type="checkbox" id="observation-layer" checked>
+                        <label for="observation-layer">观测点</label>
+                    </div>
+                    <div class="layer-item">
+                        <input type="checkbox" id="cloud-layer" checked>
+                        <label for="cloud-layer">云层</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3D地球容器 -->
+            <div id="earth-container" class="earth-container"></div>
+
+            <!-- 数据面板 -->
+            <div class="data-panel">
+                <div class="panel-header">
+                    <h2>南极洲气象数据</h2>
+                    <button id="refresh-btn" class="btn refresh-btn">刷新</button>
+                </div>
+                
+                <div class="station-info">
+                    <div class="station-header">
+                        <h3>泰山站</h3>
+                        <div class="coordinates">73.86°S, 76.98°E</div>
+                    </div>
+                    
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <img src="assets/icons/temperature.svg" alt="温度">
+                            </div>
+                            <div class="data-label">表面温度</div>
+                            <div class="data-value">-32.1 °C</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <img src="assets/icons/temperature.svg" alt="温度">
+                            </div>
+                            <div class="data-label">2m温度</div>
+                            <div class="data-value">-30.5 °C</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <img src="assets/icons/wind.svg" alt="风速">
+                            </div>
+                            <div class="data-label">风速</div>
+                            <div class="data-value">8.4 m/s</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <img src="assets/icons/precipitation.svg" alt="降水量">
+                            </div>
+                            <div class="data-label">降水量</div>
+                            <div class="data-value">0.2 mm</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <img src="assets/icons/pressure.svg" alt="气压">
+                            </div>
+                            <div class="data-label">气压</div>
+                            <div class="data-value">1012 hPa</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <img src="assets/icons/humidity.svg" alt="湿度">
+                            </div>
+                            <div class="data-label">湿度</div>
+                            <div class="data-value">70 %</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 时间控制器 -->
+        <div class="time-controller">
+            <div class="time-info">时间轴: 2023年12月15日</div>
+            <div class="time-controls">
+                <button id="play-btn" class="btn play-btn">▶</button>
+                <button id="pause-btn" class="btn pause-btn" style="display: none;">⏸</button>
+                <input type="range" id="time-slider" min="0" max="24" value="12" class="time-slider">
+            </div>
+        </div>
+
+        <!-- 气压分布图例 -->
+        <div class="pressure-legend">
+            <div class="legend-title">气压分布 (hPa)</div>
+            <div class="legend-gradient"></div>
+            <div class="legend-labels">
+                <span>980</span>
+                <span>1000</span>
+                <span>1020</span>
+                <span>1040</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 检测WebGL支持 -->
+    <script>
+        // 检查WebGL支持
+        function checkWebGLSupport() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(window.WebGLRenderingContext && 
+                    (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // 如果不支持WebGL，显示错误信息
+        if (!checkWebGLSupport()) {
+            document.getElementById('error-message').textContent = 
+                '您的浏览器不支持WebGL，请使用现代浏览器访问本页面。';
+            document.getElementById('error-message').style.display = 'block';
+        }
+        
+        // 处理加载错误
+        window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'SCRIPT' || e.target.tagName === 'IMG') {
+                document.getElementById('error-message').textContent = 
+                    '加载资源时出错，正在使用备用数据...';
+                document.getElementById('error-message').style.display = 'block';
+            }
+        }, true);
+        
+        // 在页面加载完成后隐藏加载屏幕
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const loadingScreen = document.getElementById('loading-screen');
+                loadingScreen.classList.add('fade-out');
+                setTimeout(function() {
+                    loadingScreen.style.display = 'none';
+                }, 500);
+            }, 1000);
+        });
+    </script>
+
+    <!-- JavaScript 文件 -->
+    <script src="js/data.js"></script>
+    <script src="js/earth.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 
